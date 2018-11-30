@@ -1,1 +1,2 @@
-#include "test.h"
+#include "b.h"
+#include "foo.h"

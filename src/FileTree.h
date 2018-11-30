@@ -27,6 +27,7 @@ class FileTree
     FileTree *parent;
     FileTree *_root;
     FileTree *getRoot();
+    bool isLoop();
     std::vector<FileTree> children;
 };
 

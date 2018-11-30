@@ -1,2 +1,3 @@
-#include "b.h" ///DSDKALDK
-//#include "a.h"
+
+
+#include "foo.h"

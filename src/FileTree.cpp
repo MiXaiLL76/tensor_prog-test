@@ -26,6 +26,8 @@ FileTree::FileTree(std::string name, std::string path, std::vector<std::string> 
         }
     }
     this->_root = this->getRoot();
+
+
 }
 
 int FileTree::build()
@@ -120,19 +122,15 @@ int FileTree::build()
         }
 
         FileTree child(file, this->file_path, this->include_path, is_local_include, this);
-
-        if (_root->files.count(file) == 0)
-        {
-            _root->files[file] = 0;
+        if(child.isLoop()){
+            child.exists = true;
+        }else{
             child.build();
         }
-        else
-        {
-            child.exists = true;
-            child.is_loop = true;
-        }
-
-        if (!child.is_loop || _root->print_loop)
+             if (_root->files.count(file) == 0){
+          _root->files[file] = 0;
+     }
+        //if (!child.is_loop || _root->print_loop)
         {
             _root->files[file]++;
             this->children.push_back(child);
@@ -157,9 +155,22 @@ FileTree *FileTree::getRoot()
     return root;
 }
 
+bool FileTree::isLoop(){
+    FileTree *root = this;
+    while (root->parent != NULL)
+    {
+        if(root->parent->file_name == this->file_name && root->parent->local_include == this->local_include){
+            this->is_loop = true;
+            return true;
+        }
+        root = root->parent;        
+    }
+    return false;
+}
+
 void FileTree::print(std::string sep)
 {
-    std::cout << sep << this->file_name << (this->exists ? "" : " (!)") << (this->is_loop ? " (LOOP)" : "") << std::endl;
+    std::cout << sep << this->file_name << (this->exists ? "" : " (!)")/* << (this->is_loop ? " (LOOP)" : "") */<< std::endl;
     sep += "..";
     for (int i = 0; i < this->children.size(); i++)
     {

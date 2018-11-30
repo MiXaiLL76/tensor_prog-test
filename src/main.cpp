@@ -23,11 +23,6 @@ void print_help()
     std::cout << desc << std::endl;
 }
 
-bool pred(const std::pair<std::string, int> &a, const std::pair<std::string, int> &b)
-{
-    return a.second > b.second;
-}
-
 int main(int argc, char **argv)
 {
     program_name = argv[0];
@@ -105,6 +100,8 @@ int main(int argc, char **argv)
             tree.build();
             tree.print();
 
+            total_files[it->path().filename().string()] = 0;
+
             for (auto &item : tree.files)
             {
                 if (total_files.count(item.first) == 0)
@@ -118,9 +115,10 @@ int main(int argc, char **argv)
             }
         }
     }
+    std::cout << std::endl;
 
     std::vector<std::pair<std::string, int>> vec(total_files.begin(), total_files.end());
-    std::sort(vec.begin(), vec.end(), pred);
+    std::sort(vec.begin(), vec.end(), [] (const std::pair<std::string, int> &a, const std::pair<std::string, int> &b) { return a.second > b.second; });
     for (auto p : vec)
         std::cout << p.first << ' ' << p.second << std::endl;
 
