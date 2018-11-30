@@ -13,5 +13,6 @@ std::vector<std::string> include_path;
 std::string src_path;
 
 std::string program_name;
+bool print_loop = false;
 
 #endif

@@ -9,27 +9,23 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
-//#include <boost/algorithm/string/trim.hpp>
 #include <boost/regex.hpp>
 
 FileTree::FileTree(std::string name, std::string path, std::vector<std::string> *include_path, bool local_include, FileTree *parent)
-    : file_name(name), file_path(path), include_path(include_path), local_include(local_include), parent(parent), exists(false)
+    : file_name(name), file_path(path), include_path(include_path), local_include(local_include), parent(parent), exists(false), is_loop(false)
 {
     if (local_include == false)
     {
         for (int i = 0; i < include_path->size(); i++)
         {
-            std::cout << (&include_path)[i] << std::endl;
-            /*if (boost::filesystem::exists((&include_path)[i] + separator() + this->file_name))
+            if (boost::filesystem::exists((*include_path)[i] + separator() + this->file_name))
             {
-
+                this->file_path = (*include_path)[i];
                 break;
             }
-            */
         }
-        return;
     }
-    this->build();
+    this->_root = this->getRoot();
 }
 
 int FileTree::build()
@@ -122,19 +118,48 @@ int FileTree::build()
         {
             continue;
         }
-        if (parent != NULL && file == parent->file_name && is_local_include == parent->local_include)
-        {
-            continue;
-        }
+
         FileTree child(file, this->file_path, this->include_path, is_local_include, this);
-        this->children.push_back(child);
+
+        if (_root->files.count(file) == 0)
+        {
+            _root->files[file] = 0;
+            child.build();
+        }
+        else
+        {
+            child.exists = true;
+            child.is_loop = true;
+        }
+
+        if (!child.is_loop || _root->print_loop)
+        {
+            _root->files[file]++;
+            this->children.push_back(child);
+        }
     }
     return 0;
 }
 
+FileTree *FileTree::getRoot()
+{
+    if (this->parent == NULL)
+    {
+        return this;
+    }
+
+    FileTree *root = this->parent;
+    while (root->parent != NULL)
+    {
+        root = root->parent;
+    }
+
+    return root;
+}
+
 void FileTree::print(std::string sep)
 {
-    std::cout << sep << this->file_name << (this->exists ? "" : " (!)") << std::endl;
+    std::cout << sep << this->file_name << (this->exists ? "" : " (!)") << (this->is_loop ? " (LOOP)" : "") << std::endl;
     sep += "..";
     for (int i = 0; i < this->children.size(); i++)
     {

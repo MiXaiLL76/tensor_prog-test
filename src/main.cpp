@@ -23,11 +23,16 @@ void print_help()
     std::cout << desc << std::endl;
 }
 
+bool pred(const std::pair<std::string, int> &a, const std::pair<std::string, int> &b)
+{
+    return a.second > b.second;
+}
+
 int main(int argc, char **argv)
 {
     program_name = argv[0];
 
-    desc.add_options()("help,H", "Print help messages")("include,I", po::value<std::vector<std::string>>(), "Path to search for include files")("src,S", po::value<std::string>(), "Path to search for cpp files");
+    desc.add_options()("help,H", "Вывод справки")("include,I", po::value<std::vector<std::string>>(), "Путь к поиску include файлов")("src,S", po::value<std::string>(), "Путь к поиску cpp файлов")("loop", "Вывод информации о циклически включенных файлах.");
 
     if (argc == 1)
     {
@@ -48,6 +53,10 @@ int main(int argc, char **argv)
         if (vm.count("src"))
         {
             src_path = vm["src"].as<std::string>();
+        }
+        if (vm.count("loop"))
+        {
+            print_loop = true;
         }
 
         if (vm.count("help"))
@@ -84,17 +93,36 @@ int main(int argc, char **argv)
         src_path.append(argv[1]);
     }
 
-    std::vector<FileTree> cpp_files;
+    std::map<std::string, int> total_files;
+
     fs::path src_dir(src_path);
     for (fs::directory_iterator it(dir), end; it != end; ++it)
     {
         if (it->path().extension() == ".cpp")
         {
             FileTree tree(it->path().filename().string(), src_path, &include_path);
-            cpp_files.push_back(tree);
+            tree.print_loop = print_loop;
+            tree.build();
             tree.print();
+
+            for (auto &item : tree.files)
+            {
+                if (total_files.count(item.first) == 0)
+                {
+                    total_files[item.first] = item.second;
+                }
+                else
+                {
+                    total_files[item.first] += item.second;
+                }
+            }
         }
     }
+
+    std::vector<std::pair<std::string, int>> vec(total_files.begin(), total_files.end());
+    std::sort(vec.begin(), vec.end(), pred);
+    for (auto p : vec)
+        std::cout << p.first << ' ' << p.second << std::endl;
 
     return SUCCESS;
 }
