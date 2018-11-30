@@ -74,8 +74,8 @@ int main(int argc, char **argv)
         dir = src_path;													// Проверяем, являеться ли строка из опций директорий
         if (!fs::is_directory(dir))
         {
-            std::cout << "The second argument must be a folder with source files." << std::endl;
-            std::cout << "Or use [--src, -S] flag to select directory" << std::endl;
+            std::cout << "Второй аргумент должен быть папкой с исходными файлами." << std::endl;
+            std::cout << "Или используйте флаг [--src, -S] (пример -S /tmp/dir)" << std::endl;
             print_help();
             return DIR_ERROR;
         }
@@ -89,12 +89,13 @@ int main(int argc, char **argv)
     
 
     fs::path src_dir(src_path);
-    for (fs::directory_iterator it(dir), end; it != end; ++it)			// Перебор файлов в папке
+    for (fs::recursive_directory_iterator it(dir), end; it != end; ++it)			// Перебор файлов в папке
     {
-        if (it->path().extension() == ".cpp")							// Поиск совпадений по расширению
+        if (!fs::is_directory(it->path()) && it->path().extension() == ".cpp")							// Поиск совпадений по расширению
         {
+			
 			/* Создания древа для 1 файла*/
-            FileTree tree(it->path().filename().string(), src_path, &include_path);
+            FileTree tree(it->path().filename().string(), it->path().parent_path().string(), &include_path);
             
             tree.build();// Построение древа
             tree.print();// Вывод древа
@@ -127,5 +128,7 @@ int main(int argc, char **argv)
     for (auto p : vec)		// Вывод вектора, в соответсвии с C++11
         std::cout << p.first << ' ' << p.second << std::endl;
 
+	std::cout << std::endl << "Press enter to continue ...";
+	std::cin.get();
     return SUCCESS;
 }

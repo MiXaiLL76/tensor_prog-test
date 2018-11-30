@@ -11,6 +11,7 @@
     <ProjectGuid>{DC518B5B-66C1-4DBE-87EF-EBA008AB39E8}</ProjectGuid>
     <RootNamespace>tensorprogtest</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.17134.0</WindowsTargetPlatformVersion>
+    <ProjectName>analyser</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
