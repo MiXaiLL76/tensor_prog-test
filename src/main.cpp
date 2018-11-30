@@ -1,5 +1,3 @@
-#include <algorithm>
-#include <fstream>
 #include <iostream>
 #include <iterator>
 #include <string>
@@ -14,52 +12,52 @@
 namespace po = boost::program_options;
 namespace fs = boost::filesystem;
 
-po::options_description desc("Options");
+po::options_description desc("Options"); // Опции приложения
 
+//Функция вывода справки
 void print_help()
 {
-    std::cout << "Use: " << program_name << " /mnt/c/mysources -I /mnt/c/mysources/includes -I /mnt/c/mylibrary" << std::endl
-              << std::endl;
+	std::cout << "Use: " << program_name << " /mnt/c/mysources -I /mnt/c/mysources/includes -I /mnt/c/mylibrary" << std::endl
+		<< std::endl;
     std::cout << desc << std::endl;
 }
 
 int main(int argc, char **argv)
 {
-    program_name = argv[0];
+    program_name = argv[0];	//	Первый аргумент всегда название приложения)
 
-    desc.add_options()("help,H", "Вывод справки")("include,I", po::value<std::vector<std::string>>(), "Путь к поиску include файлов")("src,S", po::value<std::string>(), "Путь к поиску cpp файлов")("loop", "Вывод информации о циклически включенных файлах.");
+    desc.add_options()
+		("help,H", "Вывод справки")/**/
+		("include,I", po::value<std::vector<std::string>>(), "Путь к поиску include файлов")/**/
+		("src,S", po::value<std::string>(), "Путь к поиску cpp файлов");/**/
 
-    if (argc == 1)
+    if (argc == 1)			// Если аргумент так и остался всего 1 (название приложения) то будем ругать юзера, ведь он не запускает с параметрами.
     {
         std::cout << "Input error" << std::endl;
-        print_help();
+        print_help();		// Вывод справки
         return INPUT_ERROR;
     }
+
     po::variables_map vm;
     try
     {
-        po::store(po::parse_command_line(argc, argv, desc), vm);
+        po::store(po::parse_command_line(argc, argv, desc), vm);		// Распарсивание опций
 
         if (vm.count("include"))
         {
-            include_path = vm["include"].as<std::vector<std::string>>();
+            include_path = vm["include"].as<std::vector<std::string>>();// Загрузка include_path 
         }
 
         if (vm.count("src"))
         {
-            src_path = vm["src"].as<std::string>();
-        }
-        if (vm.count("loop"))
-        {
-            print_loop = true;
+            src_path = vm["src"].as<std::string>();						// Папка с исходными файлами
         }
 
         if (vm.count("help"))
         {
-            print_help();
+            print_help();												// Вывод спраки) 
             return SUCCESS;
         }
-
         po::notify(vm);
     }
     catch (po::error &e)
@@ -70,10 +68,10 @@ int main(int argc, char **argv)
         return BASE_ERROR;
     }
 
-    fs::path dir(argv[1]);
+    fs::path dir(argv[1]);												// Проверяем, являеться ли 1 аргумент директорий.
     if (!fs::is_directory(dir))
     {
-        dir = src_path;
+        dir = src_path;													// Проверяем, являеться ли строка из опций директорий
         if (!fs::is_directory(dir))
         {
             std::cout << "The second argument must be a folder with source files." << std::endl;
@@ -84,42 +82,49 @@ int main(int argc, char **argv)
     }
     else
     {
-        src_path.clear();
-        src_path.append(argv[1]);
+        src_path.clear();												// Очистка
+        src_path.append(argv[1]);										// Выбор
     }
 
-    std::map<std::string, int> total_files;
+    
 
     fs::path src_dir(src_path);
-    for (fs::directory_iterator it(dir), end; it != end; ++it)
+    for (fs::directory_iterator it(dir), end; it != end; ++it)			// Перебор файлов в папке
     {
-        if (it->path().extension() == ".cpp")
+        if (it->path().extension() == ".cpp")							// Поиск совпадений по расширению
         {
+			/* Создания древа для 1 файла*/
             FileTree tree(it->path().filename().string(), src_path, &include_path);
-            tree.print_loop = print_loop;
-            tree.build();
-            tree.print();
+            
+            tree.build();// Построение древа
+            tree.print();// Вывод древа
+			
+			/*Чисто теоретически, можно сделать всё в 1 класс, и прикрутить многопоточность.*/
+			/*Может потом займусь.*/
 
-            total_files[it->path().filename().string()] = 0;
+            total_files[it->path().filename().string()] = 0;// Добавления название *.cpp файла, как в примере с 0
 
-            for (auto &item : tree.files)
+            for (auto &item : tree.files)/* Обработка всех файлов, задействованных в текущем древе.*/
             {
                 if (total_files.count(item.first) == 0)
                 {
-                    total_files[item.first] = item.second;
+                    total_files[item.first] = item.second;// Создание нового элемента.
+					/*Можно использовать какое нибудь .insert(), но мне так нравится больше, после Golang */
                 }
                 else
                 {
                     total_files[item.first] += item.second;
+					/*Добавление к уже существующим файлам*/
                 }
             }
         }
     }
-    std::cout << std::endl;
+    std::cout << std::endl;	// Разделительная строка между древом и кол-вом файлов
 
-    std::vector<std::pair<std::string, int>> vec(total_files.begin(), total_files.end());
+    std::vector<std::pair<std::string, int>> vec(total_files.begin(), total_files.end());//Преобразование MAP в VECTOR чтобы отсортировать.
     std::sort(vec.begin(), vec.end(), [] (const std::pair<std::string, int> &a, const std::pair<std::string, int> &b) { return a.second > b.second; });
-    for (auto p : vec)
+
+    for (auto p : vec)		// Вывод вектора, в соответсвии с C++11
         std::cout << p.first << ' ' << p.second << std::endl;
 
     return SUCCESS;

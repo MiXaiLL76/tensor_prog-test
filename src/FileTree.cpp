@@ -16,7 +16,7 @@ FileTree::FileTree(std::string name, std::string path, std::vector<std::string> 
 {
     if (local_include == false)
     {
-        for (int i = 0; i < include_path->size(); i++)
+        for (size_t i = 0; i < include_path->size(); i++)
         {
             if (boost::filesystem::exists((*include_path)[i] + separator() + this->file_name))
             {
@@ -130,11 +130,10 @@ int FileTree::build()
              if (_root->files.count(file) == 0){
           _root->files[file] = 0;
      }
-        //if (!child.is_loop || _root->print_loop)
-        {
+       
             _root->files[file]++;
             this->children.push_back(child);
-        }
+        
     }
     return 0;
 }
@@ -172,7 +171,7 @@ void FileTree::print(std::string sep)
 {
     std::cout << sep << this->file_name << (this->exists ? "" : " (!)")/* << (this->is_loop ? " (LOOP)" : "") */<< std::endl;
     sep += "..";
-    for (int i = 0; i < this->children.size(); i++)
+    for (size_t i = 0; i < this->children.size(); i++)
     {
         this->children[i].print(sep);
     }
