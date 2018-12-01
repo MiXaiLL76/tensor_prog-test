@@ -19,17 +19,24 @@ FileTree::FileTree(std::string name, std::string path, std::vector<std::string> 
     {
         for (size_t i = 0; i < include_path->size(); i++)
         {
-            if (boost::filesystem::exists((*include_path)[i] + separator() + this->file_path+ separator() +this->file_name))
+			std::string true_path =  "";
+			if (this->file_path.length() > 0) {
+				true_path = this->file_path + separator();
+			}
+			
+            if (boost::filesystem::exists((*include_path)[i] + separator() +true_path+ this->file_name))
             {
-                this->file_path = (*include_path)[i];
+				this->file_path = (*include_path)[i] + separator() + true_path;
                 break;
             }
+			
         }
     }
 }
 
 int FileTree::build()
 {
+	
     if (!boost::filesystem::exists(this->file_path + separator() + this->file_name))
     {
         return 1;		/* Если файла не существует, читать его нельзя*/
@@ -41,7 +48,7 @@ int FileTree::build()
 	Читать файл буду построчно, по идее, так меньше места в памяти будет занимать, но выполнение будет дольше. 
 	Палка о двух концах)
 	*/
-    std::ifstream file(this->file_path + separator() + this->file_name);
+    std::ifstream myfile(this->file_path + separator() + this->file_name);
     std::string temp;	// Переменная для хранения строки
     bool is_comment = false;
 
@@ -55,8 +62,9 @@ int FileTree::build()
         Но пока не буду.
     */
 
-    while (std::getline(file, temp))		// Построчное чтение
+    while (std::getline(myfile, temp))		// Построчное чтение
     {
+		
         if (temp.find(block_comment_start, 0) != std::string::npos)// Если начался блок коментариев
         {
             if (temp.find(block_comment_end, 0) != std::string::npos)//Если он закончился в этой же строке.
@@ -95,6 +103,7 @@ int FileTree::build()
 
         std::string file = temp.substr(temp.find(include_find, 0) + include_find.length());
         boost::trim(file); //обрезать пробелы на концах
+		
 
         bool is_local_include = true; //тип файлов включения.
 
@@ -125,18 +134,21 @@ int FileTree::build()
         }
 		
 		//Строим древо для этого дочернего элемента.
-		//boost::replace_all(file, "/", separator());
 		std::replace_copy(file.begin(), file.end(), file.begin(), '/', separator());
 		boost::filesystem::path target(file);
+		std::string true_path = target.parent_path().string();
+		if (is_local_include) {
+			true_path = file_path + separator() + true_path;
+		}
 
-        FileTree child(target.filename().string(), file_path+ separator()+target.parent_path().string(), this->include_path, is_local_include, this);
+        FileTree child(target.filename().string(), true_path, this->include_path, is_local_include, this);
+		
         if(child.isLoop()){
             child.exists = true;
-        }else{
-			this->getRoot();
+        }else{		
             child.build();
         }
-
+		this->getRoot();
 		/*Подсчёт файликов*/
         if (this->_root->files.count(target.filename().string()) == 0){
 				 this->_root->files[target.filename().string()] = 0;
@@ -178,12 +190,17 @@ bool FileTree::isLoop(){
     return false;
 }
 
-void FileTree::print(std::string sep)
+void FileTree::print(std::string sep,std::ofstream *out_stream)
 {
-    std::cout << sep << this->file_name << (this->exists ? "" : " (!)")/* << (this->is_loop ? " (LOOP)" : "") */<< std::endl;
+	if ((*out_stream).is_open()){
+			*out_stream << sep << this->file_name << (this->exists ? "" : " (!)")<< std::endl;
+	}
+	else {
+		std::cout << sep << this->file_name << (this->exists ? "" : " (!)")<< std::endl;
+	}
     sep += "  ";
     for (size_t i = 0; i < this->children.size(); i++)
     {
-        this->children[i].print(sep);
+        this->children[i].print(sep, out_stream);
     }
 }
