@@ -3,9 +3,7 @@
 boost*
 Release
 */analyser*
-tensor_prog-test/Release/*
-tensor_prog-test/Releas*
-
+tensor_prog-test/Release
 out.txt
 analyser
 src/analyser
