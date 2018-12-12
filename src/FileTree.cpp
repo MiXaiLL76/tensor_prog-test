@@ -15,71 +15,81 @@
 FileTree::FileTree(std::string name, std::string path, std::vector<std::string> *include_path, bool local_include, FileTree *parent)
     : file_name(name), file_path(path), include_path(include_path), local_include(local_include), parent(parent), exists(false), is_loop(false)
 {
-	if (local_include == false)
+    //std::cout << this->file_name << ": Конструктор класса." << std::endl;
+    Init(name, path, include_path, local_include, parent);
+}
+
+void FileTree::Init(std::string name, std::string path, std::vector<std::string> *include_path, bool local_include, FileTree *parent)
+{
+    if (local_include == false)
     {
         for (size_t i = 0; i < include_path->size(); i++)
         {
-			std::string true_path =  "";
-			if (this->file_path.length() > 0) {
-				true_path = this->file_path + separator();
-			}
-			
-            if (boost::filesystem::exists((*include_path)[i] + separator() +true_path+ this->file_name))
+            std::string true_path = "";
+            if (this->file_path.length() > 0)
             {
-				this->file_path = (*include_path)[i] + separator() + true_path;
+                true_path = this->file_path + separator();
+            }
+
+            if (boost::filesystem::exists((*include_path)[i] + separator() + true_path + this->file_name))
+            {
+                this->file_path = (*include_path)[i] + separator() + true_path;
                 break;
             }
-			
         }
+    }
+    if (parent != NULL)
+    {
+        this->default_print_sep = parent->default_print_sep;
     }
 }
 
 int FileTree::build()
 {
-	
+
     if (!boost::filesystem::exists(this->file_path + separator() + this->file_name))
     {
-        return 1;		/* Если файла не существует, читать его нельзя*/
+        return 1; /* Если файла не существует, читать его нельзя*/
     }
 
-    exists = true;		/* Файл найден.*/
+    exists = true; /* Файл найден.*/
 
-	/*
+    /*
 	Читать файл буду построчно, по идее, так меньше места в памяти будет занимать, но выполнение будет дольше. 
 	Палка о двух концах)
 	*/
     std::ifstream myfile(this->file_path + separator() + this->file_name);
-    std::string temp;	// Переменная для хранения строки
+    std::string temp; // Переменная для хранения строки
     bool is_comment = false;
 
     std::string line_comment = "//";        //	Коментарий формата "//" всё, что после него, удаляем.
-    std::string block_comment_start = "/*"; // Начало блока коммента /* 
+    std::string block_comment_start = "/*"; // Начало блока коммента /*
     std::string block_comment_end = "*/";   // Конец блока коммента  */
     std::string include_find = "#include";  // Так выглядит то, что мы должны обработать
-    
-	/*
+
+    /*
         Это всё следует переписать на регулярные выражения. 
         Но пока не буду.
     */
 
-    while (std::getline(myfile, temp))		// Построчное чтение
+    while (std::getline(myfile, temp)) // Построчное чтение
     {
-		
-        if (temp.find(block_comment_start, 0) != std::string::npos)// Если начался блок коментариев
+
+        if (temp.find(block_comment_start, 0) != std::string::npos) // Если начался блок коментариев
         {
-            if (temp.find(block_comment_end, 0) != std::string::npos)//Если он закончился в этой же строке.
+            if (temp.find(block_comment_end, 0) != std::string::npos) //Если он закончился в этой же строке.
             {
                 std::string start = temp.substr(0, temp.find(block_comment_start, 0));
                 std::string end = temp.substr((int)temp.find(block_comment_end) + block_comment_end.length());
-                temp = start + end;		// В темп пишем всё, что между этими двумя строками
+                temp = start + end; // В темп пишем всё, что между этими двумя строками
             }
             else
             {
-                is_comment = true;		// Если комментарий только начался в этой строке, а закончится после.
+                is_comment = true; // Если комментарий только начался в этой строке, а закончится после.
             }
         }
 
-        if (is_comment && (temp.find(block_comment_end, 0) != std::string::npos))// Если нашли конец незакрытого блока комметария.
+        if (is_comment && (temp.find(block_comment_end, 0) != std::string::npos)) // Если нашли конец незакрытого блока комметария.
         {
             temp = temp.substr((int)temp.find(block_comment_end) + block_comment_end.length());
             is_comment = false;
@@ -93,7 +103,7 @@ int FileTree::build()
         if (temp.find(line_comment, 0) != std::string::npos)
         {
             temp = temp.substr(0, (int)temp.find(line_comment, 0));
-			// Уничтожаем все данные, после линейного комментария.
+            // Уничтожаем все данные, после линейного комментария.
         }
 
         if (temp.find(include_find, 0) == std::string::npos)
@@ -103,12 +113,11 @@ int FileTree::build()
 
         std::string file = temp.substr(temp.find(include_find, 0) + include_find.length());
         boost::trim(file); //обрезать пробелы на концах
-		
 
         bool is_local_include = true; //тип файлов включения.
 
         const std::string s = file;
-        const boost::regex re("[<](.*)[>]|[\"](.*)[\"]");// Выбираем по этому регулярному выражению всё, что заключено в скобки формата <> и ""
+        const boost::regex re("[<](.*)[>]|[\"](.*)[\"]"); // Выбираем по этому регулярному выражению всё, что заключено в скобки формата <> и ""
 
         boost::smatch matches;
 
@@ -132,31 +141,35 @@ int FileTree::build()
         {
             continue;
         }
-		
-		//Строим древо для этого дочернего элемента.
-		std::replace_copy(file.begin(), file.end(), file.begin(), '/', separator());
-		boost::filesystem::path target(file);
-		std::string true_path = target.parent_path().string();
-		if (is_local_include) {
-			true_path = file_path + separator() + true_path;
-		}
 
-        FileTree child(target.filename().string(), true_path, this->include_path, is_local_include, this);
-		
-        if(child.isLoop()){
+        //Строим древо для этого дочернего элемента.
+        std::replace_copy(file.begin(), file.end(), file.begin(), '/', separator());
+        boost::filesystem::path target(file);
+        std::string true_path = target.parent_path().string();
+        if (is_local_include)
+        {
+            true_path = file_path + separator() + true_path;
+        }
+
+        //FileTree child(target.filename().string(), true_path, this->include_path, is_local_include, this);
+        FileTree child = this->newChild(target.filename().string(), true_path, is_local_include);
+        if (child.isLoop())
+        {
             child.exists = true;
-        }else{		
+        }
+        else
+        {
             child.build();
         }
-		this->getRoot();
-		/*Подсчёт файликов*/
-        if (this->_root->files.count(target.filename().string()) == 0){
-				 this->_root->files[target.filename().string()] = 0;
-		}       
-		this->_root->files[target.filename().string()]++;
+        this->getRoot();
+        /*Подсчёт файликов*/
+        if (this->_root->files.count(target.filename().string()) == 0)
+        {
+            this->_root->files[target.filename().string()] = 0;
+        }
+        this->_root->files[target.filename().string()]++;
 
-        this->children.push_back(child);
-        
+        this->pushChild(&child);
     }
     return 0;
 }
@@ -164,43 +177,91 @@ int FileTree::build()
 /*Проход по элеметнам*/
 FileTree *FileTree::getRoot()
 {
-	FileTree *root = this;
-    while (root->parent != NULL)
+    /*  std::cout << this->_root;
+    if (this->_root != NULL)
+    {
+        return this->_root;
+    }
+*/
+    FileTree *root = this;
+    while (root->parent != NULL) // Получение первого элемента древа.
     {
         root = root->parent;
     }
-	this->_root = root;
+    this->_root = root;
     return root;
 }
 
-bool FileTree::isLoop(){
+std::vector<std::string> *FileTree::getIncludePath()
+{
+    return this->include_path;
+}
+
+std::vector<FileTree> *FileTree::getChildrens()
+{
+    return &this->children;
+}
+/*Создание нового экземпляра класса*/
+FileTree FileTree::newChild(std::string name, std::string path, bool local_include)
+{
+    FileTree one(name, path, this->getIncludePath(), local_include, this);
+    return one;
+}
+/*
+FileTree *FileTree::newChild(std::string name, std::string path, bool local_include)
+{
+    return new FileTree(name, path, this->getIncludePath(), local_include, this);
+}
+*/
+
+void FileTree::pushChild(FileTree *child)
+{
+    this->children.push_back(*child);
+}
+
+bool FileTree::isLoop()
+{
     FileTree *root = this;
     while (root->parent != NULL)
     {
-        if(
-			root->parent->file_name == this->file_name			/* Имя совпадает*/
-			&&
-			root->parent->local_include == this->local_include	/* Тип включения совпадает*/
-		){
+        if (
+            root->parent->file_name == this->file_name /* Имя совпадает*/
+            &&
+            root->parent->local_include == this->local_include /* Тип включения совпадает*/
+        )
+        {
             this->is_loop = true;
             return true;
         }
-        root = root->parent;        
+        root = root->parent;
     }
     return false;
 }
 
-void FileTree::print(std::string sep,std::ofstream *out_stream)
+std::string FileTree::get_print_sep()
 {
-	if ((*out_stream).is_open()){
-			*out_stream << sep << this->file_name << (this->exists ? "" : " (!)")<< std::endl;
-	}
-	else {
-		std::cout << sep << this->file_name << (this->exists ? "" : " (!)")<< std::endl;
-	}
-    sep += "  ";
-    for (size_t i = 0; i < this->children.size(); i++)
+    return this->default_print_sep;
+}
+void FileTree::set_print_sep(std::string sep)
+{
+    this->default_print_sep = sep;
+}
+
+void FileTree::print(std::string sep, std::ofstream *out_stream)
+{
+    if ((*out_stream).is_open())
     {
-        this->children[i].print(sep, out_stream);
+        *out_stream << sep << this->file_name << (this->exists ? "" : " (!)") << std::endl;
+    }
+    else
+    {
+        std::cout << sep << this->file_name << (this->exists ? "" : " (!)") << std::endl;
+    }
+
+    sep += this->default_print_sep;
+    auto Childs = *this->getChildrens();
+    for (size_t i = 0; i < Childs.size(); i++)
+    {
+        Childs[i].print(sep, out_stream);
     }
 }
