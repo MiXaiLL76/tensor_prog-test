@@ -8,3 +8,5 @@ out.txt
 analyser
 src/analyser
 build
+*.zip
+*.tar.gz
