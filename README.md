@@ -2,6 +2,7 @@
 
 ### Последний релиз
 [last release v0.8](https://github.com/MiXaiLL76/tensor_prog-test/releases/tag/0.8)
+
 [release v0.7](https://github.com/MiXaiLL76/tensor_prog-test/releases/tag/0.7)
 
 ### Сборка
