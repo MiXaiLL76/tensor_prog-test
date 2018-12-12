@@ -1,7 +1,11 @@
 ## Задача С++ - анализатор зависимостей файлов С++
 
 ### Последний релиз
-[Pre-release v0.7](https://github.com/MiXaiLL76/tensor_prog-test/releases/tag/0.7)
+[last release v0.8](https://github.com/MiXaiLL76/tensor_prog-test/releases/tag/0.8)
+[release v0.7](https://github.com/MiXaiLL76/tensor_prog-test/releases/tag/0.7)
+
+### Сборка
+[CMake](https://github.com/MiXaiLL76/tensor_prog-test/cmake.md)
 
 ### Итоги выполнения задания.
 + Реализована сборка под windows 10 с Visual Studio 2017 x86

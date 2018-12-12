@@ -17,6 +17,7 @@ class FileTree
         FileTree *parent = NULL                 /* Родительский класс.*/
     );
     virtual void Init(std::string name, std::string path, std::vector<std::string> *include_path, bool local_include, FileTree *parent);
+    /*Я не вполне понял про виртуальный конструктор, но что то такое.*/
 
     virtual ~FileTree()
     {

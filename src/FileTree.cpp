@@ -71,105 +71,111 @@ int FileTree::build()
         Это всё следует переписать на регулярные выражения. 
         Но пока не буду.
     */
-
-    while (std::getline(myfile, temp)) // Построчное чтение
+    if (myfile)
     {
-
-        if (temp.find(block_comment_start, 0) != std::string::npos) // Если начался блок коментариев
+        while (std::getline(myfile, temp)) // Построчное чтение
         {
-            if (temp.find(block_comment_end, 0) != std::string::npos) //Если он закончился в этой же строке.
+
+            if (temp.find(block_comment_start, 0) != std::string::npos) // Если начался блок коментариев
             {
-                std::string start = temp.substr(0, temp.find(block_comment_start, 0));
-                std::string end = temp.substr((int)temp.find(block_comment_end) + block_comment_end.length());
-                temp = start + end; // В темп пишем всё, что между этими двумя строками
+                if (temp.find(block_comment_end, 0) != std::string::npos) //Если он закончился в этой же строке.
+                {
+                    std::string start = temp.substr(0, temp.find(block_comment_start, 0));
+                    std::string end = temp.substr((int)temp.find(block_comment_end) + block_comment_end.length());
+                    temp = start + end; // В темп пишем всё, что между этими двумя строками
+                }
+                else
+                {
+                    is_comment = true; // Если комментарий только начался в этой строке, а закончится после.
+                }
+            }
+
+            if (is_comment && (temp.find(block_comment_end, 0) != std::string::npos)) // Если нашли конец незакрытого блока комметария.
+            {
+                temp = temp.substr((int)temp.find(block_comment_end) + block_comment_end.length());
+                is_comment = false;
+            }
+
+            if (is_comment)
+            {
+                continue; //Пока мы в блоке коммента, дальше можно не выполнять
+            }
+
+            if (temp.find(line_comment, 0) != std::string::npos)
+            {
+                temp = temp.substr(0, (int)temp.find(line_comment, 0));
+                // Уничтожаем все данные, после линейного комментария.
+            }
+
+            if (temp.find(include_find, 0) == std::string::npos)
+            {
+                continue; //в строке нет include
+            }
+
+            std::string file = temp.substr(temp.find(include_find, 0) + include_find.length());
+            boost::trim(file); //обрезать пробелы на концах
+
+            bool is_local_include = true; //тип файлов включения.
+
+            const std::string s = file;
+            const boost::regex re("[<](.*)[>]|[\"](.*)[\"]"); // Выбираем по этому регулярному выражению всё, что заключено в скобки формата <> и ""
+
+            boost::smatch matches;
+
+            std::string::const_iterator pos = s.begin();
+            while (boost::regex_search(pos, s.end(), matches, re))
+            {
+                if (!matches.empty())
+                {
+                    if (matches[0].str()[0] == '<')
+                    {
+                        is_local_include = false;
+                    }
+
+                    file = matches[0].str();
+                    file = file.substr(1, file.length() - 2);
+                    break;
+                }
+            }
+
+            if (file.length() < 3) //Минимальный файл a.h, 3 символа. меньше не будет точно.
+            {
+                continue;
+            }
+
+            //Строим древо для этого дочернего элемента.
+            std::replace_copy(file.begin(), file.end(), file.begin(), '/', separator());
+            boost::filesystem::path target(file);
+            std::string true_path = target.parent_path().string();
+            if (is_local_include)
+            {
+                true_path = file_path + separator() + true_path;
+            }
+
+            //FileTree child(target.filename().string(), true_path, this->include_path, is_local_include, this);
+            FileTree child = this->newChild(target.filename().string(), true_path, is_local_include);
+            if (child.isLoop())
+            {
+                child.exists = true;
             }
             else
             {
-                is_comment = true; // Если комментарий только начался в этой строке, а закончится после.
+                child.build();
             }
-        }
-
-        if (is_comment && (temp.find(block_comment_end, 0) != std::string::npos)) // Если нашли конец незакрытого блока комметария.
-        {
-            temp = temp.substr((int)temp.find(block_comment_end) + block_comment_end.length());
-            is_comment = false;
-        }
-
-        if (is_comment)
-        {
-            continue; //Пока мы в блоке коммента, дальше можно не выполнять
-        }
-
-        if (temp.find(line_comment, 0) != std::string::npos)
-        {
-            temp = temp.substr(0, (int)temp.find(line_comment, 0));
-            // Уничтожаем все данные, после линейного комментария.
-        }
-
-        if (temp.find(include_find, 0) == std::string::npos)
-        {
-            continue; //в строке нет include
-        }
-
-        std::string file = temp.substr(temp.find(include_find, 0) + include_find.length());
-        boost::trim(file); //обрезать пробелы на концах
-
-        bool is_local_include = true; //тип файлов включения.
-
-        const std::string s = file;
-        const boost::regex re("[<](.*)[>]|[\"](.*)[\"]"); // Выбираем по этому регулярному выражению всё, что заключено в скобки формата <> и ""
-
-        boost::smatch matches;
-
-        std::string::const_iterator pos = s.begin();
-        while (boost::regex_search(pos, s.end(), matches, re))
-        {
-            if (!matches.empty())
+            this->getRoot();
+            /*Подсчёт файликов*/
+            if (this->_root->files.count(target.filename().string()) == 0)
             {
-                if (matches[0].str()[0] == '<')
-                {
-                    is_local_include = false;
-                }
-
-                file = matches[0].str();
-                file = file.substr(1, file.length() - 2);
-                break;
+                this->_root->files[target.filename().string()] = 0;
             }
-        }
+            this->_root->files[target.filename().string()]++;
 
-        if (file.length() < 3) //Минимальный файл a.h, 3 символа. меньше не будет точно.
-        {
-            continue;
+            this->pushChild(&child);
         }
-
-        //Строим древо для этого дочернего элемента.
-        std::replace_copy(file.begin(), file.end(), file.begin(), '/', separator());
-        boost::filesystem::path target(file);
-        std::string true_path = target.parent_path().string();
-        if (is_local_include)
-        {
-            true_path = file_path + separator() + true_path;
-        }
-
-        //FileTree child(target.filename().string(), true_path, this->include_path, is_local_include, this);
-        FileTree child = this->newChild(target.filename().string(), true_path, is_local_include);
-        if (child.isLoop())
-        {
-            child.exists = true;
-        }
-        else
-        {
-            child.build();
-        }
-        this->getRoot();
-        /*Подсчёт файликов*/
-        if (this->_root->files.count(target.filename().string()) == 0)
-        {
-            this->_root->files[target.filename().string()] = 0;
-        }
-        this->_root->files[target.filename().string()]++;
-
-        this->pushChild(&child);
+    }
+    else
+    {
+        std::cout << "Возникли ошибки при попытке чтения файла." << std::endl;
     }
     return 0;
 }
@@ -177,12 +183,6 @@ int FileTree::build()
 /*Проход по элеметнам*/
 FileTree *FileTree::getRoot()
 {
-    /*  std::cout << this->_root;
-    if (this->_root != NULL)
-    {
-        return this->_root;
-    }
-*/
     FileTree *root = this;
     while (root->parent != NULL) // Получение первого элемента древа.
     {
@@ -208,6 +208,7 @@ FileTree FileTree::newChild(std::string name, std::string path, bool local_inclu
     return one;
 }
 /*
+// Отказался от этой реализации, чтобы не заморачиваться с new;delete;
 FileTree *FileTree::newChild(std::string name, std::string path, bool local_include)
 {
     return new FileTree(name, path, this->getIncludePath(), local_include, this);
